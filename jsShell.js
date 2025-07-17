@@ -38,8 +38,20 @@ class JsShell {
     this._input.appendChild(this._promptPS1);
     this._input.appendChild(this._inputLine);
     this._input.appendChild(this._cursor);
+
+    // Create temporary hint area below input line
+    this._hintArea = document.createElement('div');
+    this._hintArea.className = 'hint-area';
+    this._hintArea.style.display = 'none';
+    this._hintArea.style.marginTop = '5px';
+    this._hintArea.style.marginLeft = '0px';
+    this._hintArea.style.fontSize = '0.9em';
+    this._hintArea.style.opacity = '0.7';
+    this._hintArea.style.whiteSpace = 'pre-wrap';
+
     this._innerWindow.appendChild(this._output);
     this._innerWindow.appendChild(this._input);
+    this._innerWindow.appendChild(this._hintArea);
     this.html.appendChild(this._innerWindow);
 
     // Universal callback for key handling
@@ -151,6 +163,37 @@ class JsShell {
     return this;
   }
 
+  // Method to show temporary hint below input line
+  showHint(message, style = {}) {
+    this._hintArea.innerHTML = message;
+    this._hintArea.style.display = 'block';
+
+    // Apply custom styles
+    Object.keys(style).forEach(key => {
+      this._hintArea.style[key] = style[key];
+    });
+
+    this.scrollBottom();
+    return this;
+  }
+
+  // Method to hide hint area
+  hideHint() {
+    this._hintArea.style.display = 'none';
+    return this;
+  }
+
+  // Method to update hint content without showing/hiding
+  updateHint(message) {
+    this._hintArea.innerHTML = message;
+    return this;
+  }
+
+  // Check if hint is currently visible
+  isHintVisible() {
+    return this._hintArea.style.display !== 'none';
+  }
+
   // Method to update current input (used in key handler)
   updateInput(newValue, inputField) {
     this._inputLine.textContent = newValue;
@@ -197,7 +240,7 @@ class JsShell {
         }
       };
 
-      inputField.onkeydown = (e) => {
+      inputField.onkeydown = async (e) => {
         // Universal key handler
         if (this.onKeyHandler) {
           const keyEvent = {
@@ -214,7 +257,11 @@ class JsShell {
             stopPropagation: () => e.stopPropagation()
           };
 
-          const result = this.onKeyHandler(keyEvent, this);
+          let result = this.onKeyHandler(keyEvent, this);
+          // check if this pomise await it
+          if (result instanceof Promise) {
+            result = await result;
+          }
 
           // If handler returns a string, update input
           if (typeof result === 'string') {
@@ -271,6 +318,7 @@ class JsShell {
             }
           }
           this._input.style.display = 'none';
+          this.hideHint(); // Hide hint when submitting
           if (shouldDisplayInput) {
             this.printHTML(this._promptPS1.innerHTML + inputValue);
           }
