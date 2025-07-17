@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Universal Key Handler Demo</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f0f0f0;
+        }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+        .instructions {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border-left: 4px solid #007acc;
+        }
+        .instructions h3 {
+            margin-top: 0;
+            color: #007acc;
+        }
+        .feature-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin: 15px 0;
+        }
+        .feature-box {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 6px;
+            border-left: 3px solid #28a745;
+        }
+        .feature-box h4 {
+            margin: 0 0 10px 0;
+            color: #28a745;
+            font-size: 14px;
+        }
+        .feature-box code {
+            background: #e9ecef;
+            padding: 2px 4px;
+            border-radius: 3px;
+            font-size: 12px;
+        }
+        .terminal-container {
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .jsShell {
+            border: none !important;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="instructions">
+            <h3>🚀 Universal Key Handler with Hints Demo</h3>
+            <p>This demo shows the new hint system that displays temporary messages below the input line without cluttering the output:</p>
+            
+            <div class="feature-grid">
+                <div class="feature-box">
+                    <h4>📜 History Navigation</h4>
+                    <p><code>↑/↓</code> - navigate command history</p>
+                </div>
+                <div class="feature-box">
+                    <h4>⭐ Smart Tab Completion</h4>
+                    <p><code>Tab</code> - shows completions in hint area</p>
+                </div>
+                <div class="feature-box">
+                    <h4>🎯 Quick Clear</h4>
+                    <p><code>Ctrl+L</code> - clear screen instantly</p>
+                </div>
+                <div class="feature-box">
+                    <h4>💡 Inline Help</h4>
+                    <p><code>Ctrl+H</code> - show help in hint area</p>
+                </div>
+                <div class="feature-box">
+                    <h4>🔍 Live History Search</h4>
+                    <p><code>Ctrl+R</code> - interactive search with hints</p>
+                </div>
+                <div class="feature-box">
+                    <h4>🚀 Quick Exit</h4>
+                    <p><code>Ctrl+D</code> - exit (when input is empty)</p>
+                </div>
+            </div>
+
+            <p><strong>Try this:</strong> Type partial commands and press Tab to see <em>rich HTML completion hints</em> appear below the input line!</p>
+            <p><strong>HTML Features:</strong> Highlighting, tables, colors, backgrounds, borders, and more!</p>
+            <p><strong>Available commands:</strong> help, list, clear, exit, hello, status, date, whoami</p>
+        </div>
+        
+        <div class="terminal-container">
+            <div id="terminal"></div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { JsShell } from 'https://unpkg.com/js-shell-emulator';
+
+        // Initialize terminal
+        const shell = new JsShell('terminal', {
+            promptPS: '<span style="color: #00ff00;">user@jsshell</span>:<span style="color: #0080ff;">~</span>$ ',
+            height: '450px'
+        });
+
+        // Command history
+        const commandHistory = [];
+        let historyIndex = -1;
+        let searchMode = false;
+        let searchQuery = '';
+
+        // Available commands
+        const commands = ['help', 'list', 'clear', 'exit', 'hello', 'status', 'date', 'whoami'];
+
+        // Universal key handler
+        shell.setKeyHandler((keyEvent, shellInstance) => {
+            const { code, ctrlKey, currentInput } = keyEvent;
+
+            // Ctrl+L - quick clear
+            if (ctrlKey && code === 'KeyL') {
+                shellInstance.clear();
+                return true;
+            }
+
+            // Ctrl+D - quick exit (only when input is empty)
+            if (ctrlKey && code === 'KeyD') {
+                if (currentInput.trim() === '') {
+                    shellInstance.print('exit');
+                    shellInstance.print('Goodbye! 👋');
+                    return true;
+                }
+            }
+
+            // Ctrl+H - show help
+            if (ctrlKey && code === 'KeyH') {
+                const helpHtml = `
+                    <div style="border-left: 3px solid #ffa500; padding-left: 10px;">
+                        <strong style="color: #ffa500;">📚 Quick Help:</strong><br>
+                        <table style="margin-top: 5px; font-family: monospace;">
+                            <tr><td style="color: #87ceeb; padding-right: 15px;">Tab</td><td>auto-complete commands</td></tr>
+                            <tr><td style="color: #87ceeb; padding-right: 15px;">↑/↓</td><td>navigate history</td></tr>
+                            <tr><td style="color: #87ceeb; padding-right: 15px;">Ctrl+L</td><td>clear screen</td></tr>
+                            <tr><td style="color: #87ceeb; padding-right: 15px;">Ctrl+R</td><td>search history</td></tr>
+                            <tr><td style="color: #87ceeb; padding-right: 15px;">Ctrl+D</td><td>exit (when input empty)</td></tr>
+                            <tr><td style="color: #87ceeb; padding-right: 15px;">Ctrl+H</td><td>show/hide this help</td></tr>
+                        </table>
+                    </div>
+                `;
+                
+                if (shellInstance.isHintVisible()) {
+                    shellInstance.hideHint();
+                } else {
+                    shellInstance.showHint(helpHtml, { 
+                        background: 'rgba(255,165,0,0.1)', 
+                        padding: '10px', 
+                        borderRadius: '5px',
+                        border: '1px solid rgba(255,165,0,0.3)'
+                    });
+                }
+                return true;
+            }
+
+            // Ctrl+R - history search mode
+            if (ctrlKey && code === 'KeyR') {
+                searchMode = !searchMode;
+                if (searchMode) {
+                    const searchHtml = `
+                        <span style="color: #00ffff; font-size: 1.1em;">🔍</span> 
+                        <strong style="color: #00ffff;">History Search Mode</strong> 
+                        <em style="color: #add8e6;">(Ctrl+R to exit, type to search)</em>
+                    `;
+                    shellInstance.showHint(searchHtml, { 
+                        background: 'rgba(0,255,255,0.1)', 
+                        padding: '8px', 
+                        borderRadius: '5px',
+                        border: '1px solid rgba(0,255,255,0.3)'
+                    });
+                    searchQuery = '';
+                } else {
+                    shellInstance.hideHint();
+                }
+                return true;
+            }
+
+            // History navigation with arrow keys
+            if (code === 'ArrowUp') {
+                if (commandHistory.length > 0) {
+                    historyIndex = Math.min(historyIndex + 1, commandHistory.length - 1);
+                    const command = commandHistory[commandHistory.length - 1 - historyIndex];
+                    return command || currentInput;
+                }
+                return true;
+            }
+
+            if (code === 'ArrowDown') {
+                if (historyIndex > -1) {
+                    historyIndex = Math.max(historyIndex - 1, -1);
+                    if (historyIndex === -1) {
+                        return '';
+                    }
+                    const command = commandHistory[commandHistory.length - 1 - historyIndex];
+                    return command || currentInput;
+                }
+                return true;
+            }
+
+            // Tab completion
+            if (code === 'Tab') {
+                const words = currentInput.trim().split(/\s+/);
+                const currentWord = words[words.length - 1];
+                
+                // Complete first word (command)
+                if (words.length === 1) {
+                    const matches = commands.filter(cmd => cmd.startsWith(currentWord));
+                    
+                    if (matches.length === 1) {
+                        shellInstance.hideHint();
+                        return matches[0] + ' ';
+                    } else if (matches.length > 1) {
+                        // Show completion options with rich HTML formatting
+                        const matchesHtml = matches.map(cmd => {
+                            const matched = cmd.substring(0, currentWord.length);
+                            const remaining = cmd.substring(currentWord.length);
+                            return `<span style="color: #ffff00; font-weight: bold;">${matched}</span><span style="color: #90ee90;">${remaining}</span>`;
+                        }).join('  ');
+                        
+                        const hintHtml = `💡 <strong>Available commands:</strong><br>${matchesHtml}`;
+                        shellInstance.showHint(hintHtml, { color: '#ffffff', background: 'rgba(0,100,0,0.1)', padding: '5px', borderRadius: '3px' });
+                        
+                        // Find common prefix
+                        const commonPrefix = matches.reduce((prefix, cmd) => {
+                            let i = 0;
+                            while (i < prefix.length && i < cmd.length && prefix[i] === cmd[i]) {
+                                i++;
+                            }
+                            return prefix.slice(0, i);
+                        });
+                        
+                        if (commonPrefix.length > currentWord.length) {
+                            return commonPrefix;
+                        }
+                        return currentInput;
+                    } else {
+                        shellInstance.showHint('<span style="color: #ff6b6b;">❌ No matching commands found</span>', { 
+                            background: 'rgba(255,0,0,0.1)', 
+                            padding: '3px 8px', 
+                            borderRadius: '3px' 
+                        });
+                    }
+                } else if (words.length === 2 && words[0] === 'hello') {
+                    // Example of contextual completion with HTML
+                    const names = ['world', 'user', 'admin', 'guest'];
+                    const nameMatches = names.filter(name => name.startsWith(currentWord.toLowerCase()));
+                    
+                    if (nameMatches.length > 0) {
+                        const namesHtml = nameMatches.map(name => 
+                            `<span style="color: #87ceeb; cursor: pointer;">👤 ${name}</span>`
+                        ).join('  ');
+                        shellInstance.showHint(`🎯 <em>Suggested names:</em><br>${namesHtml}`, { 
+                            color: '#ffffff',
+                            background: 'rgba(135,206,235,0.1)',
+                            padding: '5px',
+                            borderRadius: '3px'
+                        });
+                        
+                        if (nameMatches.length === 1) {
+                            return words[0] + ' ' + nameMatches[0];
+                        }
+                    }
+                }
+                
+                return currentInput;
+            }
+
+            // Handle typing in search mode
+            if (searchMode && keyEvent.key.length === 1) {
+                searchQuery += keyEvent.key;
+                const matches = commandHistory.filter(cmd => 
+                    cmd.toLowerCase().includes(searchQuery.toLowerCase())
+                );
+                
+                if (matches.length > 0) {
+                    const matchHtml = matches[matches.length - 1];
+                    const regex = new RegExp(`(${searchQuery})`, 'gi');
+                    const highlightedMatch = matchHtml.replace(regex, '<mark style="background: yellow; color: black; padding: 1px 2px;">$1</mark>');
+                    
+                    shellInstance.updateHint(`
+                        🔍 <strong style="color: #00ffff;">Found ${matches.length} match${matches.length > 1 ? 'es' : ''}:</strong><br>
+                        <span style="color: #90ee90; font-family: monospace; background: rgba(0,0,0,0.2); padding: 2px 5px; border-radius: 3px;">${highlightedMatch}</span>
+                    `);
+                    return matches[matches.length - 1];
+                } else {
+                    shellInstance.updateHint(`
+                        🔍 <span style="color: #ff6b6b;">No matches for "<strong>${searchQuery}</strong>"</span>
+                    `);
+                }
+                return currentInput;
+            }
+
+            // Handle backspace in search mode
+            if (searchMode && code === 'Backspace') {
+                searchQuery = searchQuery.slice(0, -1);
+                if (searchQuery.length === 0) {
+                    shellInstance.updateHint(`
+                        <span style="color: #00ffff; font-size: 1.1em;">🔍</span> 
+                        <strong style="color: #00ffff;">History Search Mode</strong> 
+                        <em style="color: #add8e6;">(type to search)</em>
+                    `);
+                    return '';
+                }
+                const matches = commandHistory.filter(cmd => 
+                    cmd.toLowerCase().includes(searchQuery.toLowerCase())
+                );
+                
+                if (matches.length > 0) {
+                    const matchHtml = matches[matches.length - 1];
+                    const regex = new RegExp(`(${searchQuery})`, 'gi');
+                    const highlightedMatch = matchHtml.replace(regex, '<mark style="background: yellow; color: black; padding: 1px 2px;">$1</mark>');
+                    
+                    shellInstance.updateHint(`
+                        🔍 <strong style="color: #00ffff;">Found ${matches.length} match${matches.length > 1 ? 'es' : ''}:</strong><br>
+                        <span style="color: #90ee90; font-family: monospace; background: rgba(0,0,0,0.2); padding: 2px 5px; border-radius: 3px;">${highlightedMatch}</span>
+                    `);
+                    return matches[matches.length - 1];
+                } else {
+                    shellInstance.updateHint(`
+                        🔍 <span style="color: #ff6b6b;">No matches for "<strong>${searchQuery}</strong>"</span>
+                    `);
+                }
+                return currentInput;
+            }
+
+            // Clear hints on normal typing (when not in special modes)
+            if (!searchMode && keyEvent.key.length === 1) {
+                shellInstance.hideHint();
+            }
+
+            // Return false to use default behavior
+            return false;
+        });
+
+        // Main terminal loop
+        async function mainLoop() {
+            shell.print('🚀 Welcome to JsShell Universal Key Handler Demo!');
+            shell.print('Type commands and use keyboard shortcuts. Type "help" for available commands.');
+            shell.print('Press Ctrl+H for quick keyboard shortcuts help.');
+            shell.print('');
+
+            while (true) {
+                try {
+                    const input = await shell.input('');
+                    const [command, ...args] = input.trim().split(/\s+/);
+
+                    // Add to history if not empty and not duplicate
+                    if (input.trim() && (commandHistory.length === 0 || commandHistory[commandHistory.length - 1] !== input.trim())) {
+                        commandHistory.push(input.trim());
+                    }
+                    historyIndex = -1; // Reset history index
+                    searchMode = false; // Exit search mode
+                    shell.hideHint(); // Hide any active hints
+
+                    switch (command.toLowerCase()) {
+                        case 'help':
+                            shell.print('Available commands:');
+                            shell.print('  help           - show this help');
+                            shell.print('  list           - show file list');
+                            shell.print('  clear          - clear terminal');
+                            shell.print('  exit           - exit terminal');
+                            shell.print('  hello [name]   - say hello');
+                            shell.print('  status         - show system status');
+                            shell.print('  date           - show current date');
+                            shell.print('  whoami         - show current user');
+                            shell.print('');
+                            shell.print('Keyboard shortcuts:');
+                            shell.print('  Tab      - auto-complete commands');
+                            shell.print('  ↑/↓      - navigate command history');
+                            shell.print('  Ctrl+L   - clear screen');
+                            shell.print('  Ctrl+R   - search command history');
+                            shell.print('  Ctrl+H   - show quick help');
+                            shell.print('  Ctrl+D   - exit (when input is empty)');
+                            break;
+
+                        case 'list':
+                            shell.print('Files in current directory:');
+                            shell.print('  📁 documents/');
+                            shell.print('  📁 images/');
+                            shell.print('  📁 projects/');
+                            shell.print('  📄 readme.txt');
+                            shell.print('  📄 config.json');
+                            shell.print('  📄 package.json');
+                            break;
+
+                        case 'clear':
+                            shell.clear();
+                            break;
+
+                        case 'exit':
+                            shell.print('Goodbye! 👋');
+                            return;
+
+                        case 'hello':
+                            const name = args.join(' ') || 'World';
+                            shell.print(`Hello, ${name}! 👋`);
+                            break;
+
+                        case 'status':
+                            shell.print('System Status:');
+                            shell.print('  CPU Usage:    45%');
+                            shell.print('  Memory:       2.1GB / 8GB');
+                            shell.print('  Disk Space:   120GB / 500GB');
+                            shell.print('  Network:      ✅ Connected');
+                            shell.print('  Status:       ✅ All systems operational');
+                            break;
+
+                        case 'date':
+                            const now = new Date();
+                            shell.print(`Current date and time: ${now.toLocaleString()}`);
+                            break;
+
+                        case 'whoami':
+                            shell.print('user@jsshell');
+                            shell.print('Current user: demo user');
+                            shell.print('Shell: JsShell v1.0');
+                            break;
+
+                        case '':
+                            // Empty command - do nothing
+                            break;
+
+                        default:
+                            shell.print(`Command not found: ${command}`);
+                            shell.print('Type "help" for available commands or use Tab for auto-completion.');
+                            break;
+                    }
+                    
+                    if (command) {
+                        shell.print('');
+                    }
+                } catch (error) {
+                    shell.print(`Error: ${error.message}`);
+                    shell.print('');
+                }
+            }
+        }
+
+        // Start the terminal
+        mainLoop();
+    </script>
+</body>
+</html>
