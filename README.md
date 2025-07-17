@@ -148,6 +148,148 @@ shell.clear()
 
 // Focus the shell prompt
 shell.focus()
+
+// Update current input programmatically (used with key handlers)
+shell.updateInput('new value', inputField)
+
+// Set a universal key handler for advanced input handling
+shell.setKeyHandler((keyEvent, shellInstance) => {
+  // Handle key events with full control
+  // Return string to update input, true to prevent default, false for default behavior
+  if (keyEvent.ctrlKey && keyEvent.code === 'KeyL') {
+    shellInstance.clear()
+    return true // Prevent default behavior
+  }
+  return false // Use default behavior
+})
+```
+
+### Advanced Input Handling with `setKeyHandler`
+
+The `setKeyHandler` method allows you to implement advanced keyboard functionality like command history, tab completion, and custom shortcuts. The handler receives a `keyEvent` object and the shell instance, and can return different values to control behavior:
+
+- **Return a string**: Updates the input field with that string
+- **Return `true`**: Prevents default behavior (event handled)
+- **Return `false`**: Uses default behavior
+
+#### Command History Example
+
+Here's a complete example showing how to implement command history navigation with arrow keys:
+
+```js
+// Command history storage
+const commandHistory = [];
+let historyIndex = -1;
+
+// Set up the key handler
+shell.setKeyHandler((keyEvent, shellInstance) => {
+  const { code, currentInput } = keyEvent;
+
+  // Arrow Up - navigate to previous command
+  if (code === 'ArrowUp') {
+    if (commandHistory.length > 0) {
+      historyIndex = Math.min(historyIndex + 1, commandHistory.length - 1);
+      const command = commandHistory[commandHistory.length - 1 - historyIndex];
+      return command; // Update input with historical command
+    }
+    return true; // Prevent default
+  }
+
+  // Arrow Down - navigate to next command
+  if (code === 'ArrowDown') {
+    if (historyIndex > -1) {
+      historyIndex = Math.max(historyIndex - 1, -1);
+      if (historyIndex === -1) {
+        return ''; // Clear input when at the end
+      }
+      const command = commandHistory[commandHistory.length - 1 - historyIndex];
+      return command;
+    }
+    return true; // Prevent default
+  }
+
+  // Ctrl+L - clear screen
+  if (keyEvent.ctrlKey && code === 'KeyL') {
+    shellInstance.clear();
+    return true;
+  }
+
+  return false; // Use default behavior for other keys
+});
+
+// Main terminal loop with history management
+async function terminalLoop() {
+  while (true) {
+    const input = await shell.input('$ ');
+    
+    // Add non-empty commands to history
+    if (input.trim() && input.trim() !== commandHistory[commandHistory.length - 1]) {
+      commandHistory.push(input.trim());
+    }
+    
+    // Reset history index
+    historyIndex = -1;
+    
+    // Process command
+    if (input.trim() === 'exit') break;
+    shell.print(`You entered: ${input}`);
+  }
+}
+```
+
+#### KeyEvent Object Properties
+
+The `keyEvent` object passed to your handler contains:
+
+```js
+{
+  key: string,           // The key value (e.g., 'a', 'Enter', 'ArrowUp')
+  code: string,          // The key code (e.g., 'KeyA', 'Enter', 'ArrowUp')
+  keyCode: number,       // Legacy key code
+  ctrlKey: boolean,      // True if Ctrl key is pressed
+  shiftKey: boolean,     // True if Shift key is pressed
+  altKey: boolean,       // True if Alt key is pressed
+  metaKey: boolean,      // True if Meta/Cmd key is pressed
+  currentInput: string,  // Current input field value
+  promptType: number,    // Type of prompt (INPUT, PASSWORD, CONFIRM, PAUSE)
+  preventDefault: function, // Call to prevent default behavior
+  stopPropagation: function // Call to stop event propagation
+}
+```
+
+#### Additional Examples
+
+```js
+// Tab completion
+shell.setKeyHandler((keyEvent) => {
+  if (keyEvent.code === 'Tab') {
+    const commands = ['help', 'list', 'clear', 'exit'];
+    const matches = commands.filter(cmd => cmd.startsWith(keyEvent.currentInput));
+    if (matches.length === 1) {
+      return matches[0] + ' '; // Auto-complete and add space
+    }
+    return true; // Prevent default tab behavior
+  }
+  return false;
+});
+
+// Custom shortcuts
+shell.setKeyHandler((keyEvent, shellInstance) => {
+  // Ctrl+D for quick exit
+  if (keyEvent.ctrlKey && keyEvent.code === 'KeyD') {
+    if (keyEvent.currentInput === '') {
+      shellInstance.print('exit');
+      return true;
+    }
+  }
+  
+  // Ctrl+U to clear current line
+  if (keyEvent.ctrlKey && keyEvent.code === 'KeyU') {
+    return ''; // Clear input
+  }
+  
+  return false;
+});
 ```
 
 ## License

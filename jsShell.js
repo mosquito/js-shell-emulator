@@ -42,6 +42,9 @@ class JsShell {
     this._innerWindow.appendChild(this._input);
     this.html.appendChild(this._innerWindow);
 
+    // Universal callback for key handling
+    this.onKeyHandler = null;
+
     this.setBackgroundColor(options.backgroundColor || '#000')
       .setFontFamily(options.fontFamily || 'Ubuntu Mono, Monaco, Courier, monospace')
       .setTextColor(options.textColor || '#fff')
@@ -148,6 +151,13 @@ class JsShell {
     return this;
   }
 
+  // Method to update current input (used in key handler)
+  updateInput(newValue, inputField) {
+    this._inputLine.textContent = newValue;
+    inputField.value = newValue;
+    return this;
+  }
+
   async _prompt(message = '', promptType) {
     return new Promise(async(resolve) => {
       const shouldDisplayInput = (promptType === JsShell.PROMPT_INPUT || promptType === JsShell.PROMPT_CONFIRM);
@@ -188,10 +198,44 @@ class JsShell {
       };
 
       inputField.onkeydown = (e) => {
-        if (e.code === 'ArrowUp' || e.code === 'ArrowRight' || e.code === 'ArrowLeft' || e.code === 'ArrowDown' || e.code === 'Tab') {
+        // Universal key handler
+        if (this.onKeyHandler) {
+          const keyEvent = {
+            key: e.key,
+            code: e.code,
+            keyCode: e.keyCode,
+            ctrlKey: e.ctrlKey,
+            shiftKey: e.shiftKey,
+            altKey: e.altKey,
+            metaKey: e.metaKey,
+            currentInput: inputField.value,
+            promptType: promptType,
+            preventDefault: () => e.preventDefault(),
+            stopPropagation: () => e.stopPropagation()
+          };
+
+          const result = this.onKeyHandler(keyEvent, this);
+
+          // If handler returns a string, update input
+          if (typeof result === 'string') {
+            this.updateInput(result, inputField);
+            e.preventDefault();
+            return;
+          }
+
+          // If handler returns true, the event is handled
+          if (result === true) {
+            e.preventDefault();
+            return;
+          }
+        }
+
+        // Default behavior for arrow keys and tab
+        if (e.code === 'ArrowRight' || e.code === 'ArrowLeft' || e.code === 'Tab') {
           e.preventDefault();
         }
-        // keep cursor visible while active typing
+
+        // Keep cursor visible while active typing
         this._cursor.style.visibility = 'visible';
       };
 
@@ -343,6 +387,12 @@ class JsShell {
 
   setPrompt(promptPS) {
     this._promptPS1.innerHTML = promptPS;
+    return this;
+  }
+
+  // Method to set universal key handler
+  setKeyHandler(callback) {
+    this.onKeyHandler = callback;
     return this;
   }
 
